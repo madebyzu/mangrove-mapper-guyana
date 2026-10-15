@@ -70,6 +70,8 @@ mangrove-mapper-guyana/
 │   │   ├── report-template.cls
 │   │   ├── Makefile                    # TEXINPUTS=".." -- paths resolve from reports/
 │   │   ├── hindcast_pipeline.ipynb     # 2016-2018 Region 5 hindcast + risk overlay
+│   │   ├── region2_results.ipynb       -> tables/region2_results.tex, figures/region2_extent_fig.png
+│   │   ├── coastwide_results.ipynb     -> tables/coastwide_results.tex, figures/coastwide_extent_fig.png
 │   │   ├── figures/
 │   │   │   ├── regions_map.py            -> regions_map_fig.png
 │   │   │   ├── spatial_cv.py             -> spatial_cv_fig.png
@@ -78,8 +80,6 @@ mangrove-mapper-guyana/
 │   │   │   ├── irp-data-flowchart.drawio[.png]
 │   │   │   └── NAREI Drone Imagery{, 2, 3}.jpeg   (supplied, not generated)
 │   │   └── tables/
-│   │       ├── region2_results.ipynb           -> region2_results.tex
-│   │       ├── coastwide_results.ipynb         -> coastwide_results.tex
 │   │       ├── confusion_matrices_appendix.ipynb
 │   │       │      -> confusion_matrices_appendix_{region2,coastwide}.tex
 │   │       └── hindcast_pipeline_tab.tex
