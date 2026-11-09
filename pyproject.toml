@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mangrove_mapper"
+version = "0.1.0"
+description = "A Multi-Layered Framework for Mangrove Risk Assessment and Hindcast Validation in Guyana"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Zuriel Mbonde", email = "storiesbyzuriel@gmail.com" }
+]
+keywords = ["mangrove", "classifier", "remote sensing", "mangrove mapper", "guyana", "coastal resilience"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: GIS"
+]
+
+dependencies = [
+    "matplotlib>=3.10.8",
+    "numpy",
+    "pyyaml",
+    "pandas",
+    "geopandas",
+    "scipy",
+    "earthengine-api",
+    "scikit-learn",
+    "google-api-python-client",
+    "xgboost",
+    "joblib",
+    "shap",
+    "rasterio",
+    "pyproj"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "pytest-timeout",
+    "pyyaml",
+    "shapely",
+    "geopandas"
+]
+# Everything needed to run the notebooks and rebuild the report figures.
+notebook = [
+    "ipyleaflet",
+    "ipywidgets",
+    "IPython",
+    "geemap",
+    "matplotlib_map_utils",
+    "contextily",
+    "seaborn",
+]
+
+lint = [
+    "ruff",
+]
+
+[project.urls]
+Repository = "https://github.com/madebyzu/mangrove-mapper-guyana"
+
+[tool.setuptools.packages.find]
+include = ["mangrove_mapper", "mangrove_mapper.*"]
+# reference CSVs and the audit notebook live here but are not code
+exclude = ["mangrove_mapper.accuracy_assessment*"]
+
+[tool.setuptools.package-data]
+mangrove_mapper = ["configs/*.yml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+# Allow lines to be as long as 120.
+line-length = 120
+
+[tool.ruff.lint.per-file-ignores]
+# BLE001: do not use blind except/raise with broad exception types in validation code
+"mangrove_mapper/validation/*" = ["BLE001"]
+# RUF012: mutable class attributes should be annotated as class vars (used in tests)
+"tests/*" = ["RUF012"]
+"mangrove_mapper/sensors/*" = ["RUF012"] # TODO: fix later
+# PLC0206: use of dict/iterable unpacking in a comprehension inside notebooks is allowed here
+"reports/final-report/tables/coastwide_results.ipynb" = ["PLC0206"]
+# C408: unnecessary dict/list/tuple literal creation in notebook outputs is ignored here
+"reports/final-report/tables/region2_results.ipynb" = ["C408"]
+"reports/final-report/hindcast_pipeline.ipynb" = ["BLE001", "C408"]

@@ -1,0 +1,257 @@
+default_aoi:
+  # Guyana coastal strip, redrawn in Google Earth Engine (GEE) to trim inland extent (~7,331 km2)
+  - [-59.38308424806478, 8.054416523553055]
+  - [-58.884720106527595, 7.670222740307287]
+  - [-58.6066393915342, 7.3742767194813394]
+  - [-58.49646429770003, 6.993420918568921]
+  - [-57.771841640151585, 6.503265198524917]
+  - [-57.65508973640652, 6.412177452976993]
+  - [-57.568594569839085, 6.28012794549925]
+  - [-57.44877778487628, 6.245078372130237]
+  - [-57.23569020160864, 6.087540882000849]
+  - [-57.125826920358634, 5.866277255134532]
+  - [-57.11987172043847, 6.118209943117061]
+  - [-57.44671498215722, 6.410339167612445]
+  - [-58.10040150559472, 6.917750154191127]
+  - [-58.33111439621972, 7.168528757883949]
+  - [-58.63323841965722, 7.696886561702809]
+  - [-59.10290394700097, 8.132152633198771]
+  - [-59.69616566575097, 8.394445875718194]
+  - [-59.99279652512597, 8.549292721463692]
+  - [-59.53002638673666, 8.152306216451324]
+
+validation: 
+  # Pomeroon river estuary (validation region 2)
+  pomeroon_river_aoi:
+    - [-58.793201027447836, 7.641999643312983]
+    - [-58.786311616793554, 7.633424575768573]
+    - [-58.77487394309828, 7.621191216485879]
+    - [-58.76182767844984, 7.611492840798936]
+    - [-58.73607847190687, 7.600433021866128]
+    - [-58.70311796671348, 7.575930375898359]
+    - [-58.67016050315687, 7.5568715838076]
+    - [-58.6444112966139, 7.518070977770642]
+    - [-58.610422343977184, 7.473139628801602]
+    - [-58.57076856590101, 7.417820070012739]
+    - [-58.545191020735, 7.398584252947056]
+    - [-58.531458993179655, 7.384966344435998]
+    - [-58.51978657274669, 7.386327054087321]
+    - [-58.51120232824954, 7.414584961519535]
+    - [-58.53557798362562, 7.437395480797441]
+    - [-58.54931089378187, 7.460544404921525]
+    - [-58.60424253440687, 7.528622363801614]
+    - [-58.63994810081312, 7.576270580861263]
+    - [-58.69625303245375, 7.632080358980546]
+    - [-58.76217100120375, 7.652496753438371]
+    - [-58.79101011253187, 7.696558803331786]
+    - [-58.81273167189868, 7.673527083127342]
+    - [-58.79706340842928, 7.647188782240765]
+    - [-58.793201027447836, 7.641999643312983]
+  # Planet NICFI basemaps for the labelling widget (run_interpretation_widget).
+  # Planet's licence forbids sharing them, so this asset is private: upload your
+  # own basemaps to your GEE project and replace this path, or pass collection_path.
+  collection_path: projects/irp-zu/assets/basemaps-guyana
+
+default_date_range:
+  # Training year 2020
+  start_date: '2020-01-01'
+  end_date: '2020-12-31'
+
+target:
+  # dataset_id: ESA/WorldCover/v100
+  dataset_id: projects/sat-io/open-datasets/GMW/annual-extent/GMW_MNG_2020 # Global Mangrove Watch (GMW) 2020 10m
+  # mangrove_class: 95 # WorldCover Mangrove Class
+  mangrove_class : 1 # GMW Mangrove Class
+  permanent_water_threshold: 100
+
+export:
+  num_sample_points: 6000 # the upper bound of samples per class
+  target_name: label
+  scale: 10
+  seed: 48
+  tile_scale: 4
+  geometries: true
+
+
+preprocessing:
+  sentinel1:
+    edge_mask_threshold_db: -40  # pixels below this threshold (dB) are treated as edge artifacts
+    speckle_filter: true  # applies Refined Lee filter; disable for faster visualisation
+  alos_palsar:
+    speckle_filter: true
+
+bands:
+  # references: National Aeronautics and Space Administration (NASA)
+  # docs/references.md#documentation
+  landsat8:
+    - SR_B2 
+    - SR_B3
+    - SR_B4
+    - SR_B5
+    - SR_B6
+    - SR_B7
+
+  sentinel1:
+    - VV_asc
+    - VH_asc
+    - VV_desc
+    - VH_desc
+    - mRFDI
+
+  # references: European Space Agency (ESA)
+  # docs/references.md#documentation
+  sentinel2:
+    - B2
+    - B3
+    - B4
+    - B5
+    - B6
+    - B7
+    - B8
+    - B8A
+    - B11
+    - B12
+
+  alos_palsar:
+    - HH
+    - HV
+    - mRFDI
+    - HV_ratio
+
+risk:
+  geometry:
+    # Coastline contours appear like a pixel staircase so gradients are unstable and the 
+    # shoreline normals point in wild directions. As a result, a Box Filter smoothing window 
+    # is applied where width is the number vertices.
+    # Given 10 m pixel spacing, 25 is ≈ 250 m of smoothing. Too low, normals are noisy; too high, 
+    smooth_win: 270
+
+    # Alongshore spacing of transect origins. Original idea from Best et al. (2022).
+    spacing_m: 100
+
+    # Sampling step along each transect. Matched to the 10 m pixel: finer just
+    # re-reads the same pixels, coarser can step over a thin belt entirely.
+    step_m: 10
+
+    # How far landward a transect looks for the mangrove belt. Must exceed the
+    # widest belt.
+    # NOTE: May need to tune to the particular region.
+    max_len_m: 4000
+
+    # Consecutive misses tolerated inside one belt, in steps (2 = 20 m). Stops a
+    # single-pixel classification dropout from splitting one continuous fringe
+    # into two.
+    gap_tol: 2
+
+    # The seaward look distance from the coastline to the sea at the direction normal to the coast.
+    rmax_m: 3000
+
+    # Minimum seaward open water in metres for a transect to count as open-coast.
+    fetch_min_m: 1500
+
+  index:
+    # Derived from Best et al., 2022
+    alpha_fringe: 0.0026 # mangrove belt (midpoint of the Chateau Margot range)
+    alpha_fr_lo: 0.0020  # sensitivity band low (Chateau Margot Region 4)
+    alpha_fr_lit: 0.00578 # steepest literature value ("50% at 120 m")
+
+    exposure_depth_m: 4000 # population and landcover will be sampled up to 4km inland of the mangrove belt
+    exposure_classes: # DynamicWorld: 4 = crops, 6 = built 
+    # docs/references.md#documentation : Dynamic World V1
+      - 4 
+      - 6
+
+    # 25 ppl/ha was selected as the density by which exposure risk is saturated. The max number I saw was 98 ppl/ha
+    # but most regions have very few or no people, so 25 seemed like a reasonable cutoff (representing a village or small town).
+    pop_full_exposure_per_ha: 25
+
+    belt_weights:
+      fringe: 0.50
+      evi: 0.25
+      hv: 0.25
+
+    leg_weights:
+      belt: 1
+      exposure: 1
+      erosion: 1
+
+    exposure_min_multiplier: 0.25
+    erosion_min_multiplier: 0.25
+    
+hindcast:
+  region_five_aoi:
+    - [-57.53459567316835, 6.280749718556195]
+    - [-57.53423089274232, 6.293418917934118]
+    - [-57.53918726459346, 6.300170642663541]
+    - [-57.543285454810224, 6.30777545127152]
+    - [-57.55020474796854, 6.316439526651096]
+    - [-57.55372380619608, 6.323178944890136]
+    - [-57.557414525800574, 6.330003582704462]
+    - [-57.55930280094706, 6.338790171087786]
+    - [-57.560418599897254, 6.345529297652126]
+    - [-57.56127690678202, 6.35363319386804]
+    - [-57.564366811567176, 6.359092588850243]
+    - [-57.566884935399884, 6.366193663882084]
+    - [-57.572030377358054, 6.375150625060728]
+    - [-57.576493573158835, 6.380097996903415]
+    - [-57.59159586122355, 6.401758958357487]
+    - [-57.59391328981242, 6.41003255392503]
+    - [-57.59347282736924, 6.416925027136835]
+    - [-57.59526580295706, 6.419128662708498]
+    - [-57.613805231667996, 6.432519422498961]
+    - [-57.6222166391387, 6.44989366108963]
+    - [-57.63620704136038, 6.462516042100956]
+    - [-57.657419104211655, 6.480425636639372]
+    - [-57.68740744736519, 6.506980942150454]
+    - [-57.74513158395311, 6.5601443246654965]
+    - [-57.839991026792546, 6.6502220145497075]
+    - [-57.90778858192674, 6.708182124211692]
+    - [-57.92298061378709, 6.713467167097091]
+    - [-57.9213069153618, 6.708309988829485]
+    - [-57.918345756609355, 6.696887283957017]
+    - [-57.85160734030232, 6.636995961966519]
+    - [-57.83171416716888, 6.619581004259963]
+    - [-57.82066511899829, 6.608239950403215]
+    - [-57.8169958081135, 6.60065168677015]
+    - [-57.81298327237964, 6.5956212431119665]
+    - [-57.81105208188892, 6.589524928145292]
+    - [-57.80924963743091, 6.581424813328178]
+    - [-57.801610706156495, 6.580017937809793]
+    - [-57.79049563199878, 6.573708265273912]
+    - [-57.7798805555199, 6.56407307030771]
+    - [-57.763880724718135, 6.551595246732276]
+    - [-57.74985124075853, 6.541842997837183]
+    - [-57.734233384347974, 6.52897335726855]
+    - [-57.69166513386225, 6.4899632870163675]
+    - [-57.651678295667, 6.449755947488655]
+    - [-57.634719357202336, 6.433227570525247]
+    - [-57.612489208886906, 6.404995723987908]
+    - [-57.60718902765279, 6.397745683364155]
+    - [-57.602060595518445, 6.392457437563708]
+    - [-57.59317730397968, 6.3815396884344215]
+    - [-57.581449436957634, 6.352816975349739]
+    - [-57.57381476272874, 6.336216574860449]
+    - [-57.56836445059366, 6.327472522153601]
+    - [-57.56360091080003, 6.318045995735446]
+    - [-57.559051839107866, 6.313396594441187]
+    - [-57.55347288955979, 6.307467524256081]
+    - [-57.54660643448167, 6.296121020543516]
+    - [-57.53459567316835, 6.280749718556195]
+
+  # Damage area (estimate): docs/references.md#websites Seoraj, N. (2019, November 24)
+  # https://mapcarta.com/19103668 
+  # Dantzig, Columbia, Glazier’s Lust, Fairfield, 
+  # High Dam, Rebecca’s Lust and Planters’ Hall. 
+  damage_zone:
+    - [-57.83246076934992, 6.609668931573303]
+    - [-57.83002610692403, 6.615241287377594]
+    - [-57.82513375950588, 6.629905650818246]
+    - [-57.868177863337564, 6.66976152754194]
+    - [-57.8683923816233, 6.669505757343853]
+    - [-57.86907902179172, 6.66839750554062]
+    - [-57.86955100092298, 6.667416991602732]
+    - [-57.873971367215944, 6.661875847271335]
+    - [-57.881867788689796, 6.650025799724372]
+    - [-57.88238278239023, 6.646274651510865]
+    - [-57.83452070587362, 6.609327890647623]
+    - [-57.83246076934992, 6.609668931573303]

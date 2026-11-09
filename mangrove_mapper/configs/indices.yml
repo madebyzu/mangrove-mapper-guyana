@@ -1,0 +1,63 @@
+optical_indices:
+  NDVI:
+    expression: (NIR - RED) / (NIR + RED)
+    landsat8:
+      NIR: SR_B5
+      RED: SR_B4
+    sentinel2:
+      NIR: B8
+      RED: B4
+
+  NDMI:
+    expression: (NIR - SWIR1) / (NIR + SWIR1)
+    landsat8:
+      NIR: SR_B5
+      SWIR1: SR_B6
+    sentinel2:
+      NIR: B8
+      SWIR1: B11
+
+  mNDWI: 
+    expression: (GREEN - SWIR1) / (GREEN + SWIR1)
+    landsat8:
+      GREEN: SR_B3
+      SWIR1: SR_B6
+    sentinel2:
+      GREEN: B3
+      SWIR1: B11
+
+  GCVI:
+    expression: (NIR / GREEN) - 1
+    landsat8:
+      NIR: SR_B5
+      GREEN: SR_B3
+    sentinel2:
+      NIR: B8
+      GREEN: B3
+
+  SR:
+    expression: NIR / RED
+    landsat8:
+      NIR: SR_B5
+      RED: SR_B4
+    sentinel2:
+      NIR: B8
+      RED: B4
+
+sar_indices:
+  mRFDI:
+    expression: (CO_POL - CROSS_POL) / (CO_POL + CROSS_POL)
+    sentinel1:
+      CO_POL: VV
+      CROSS_POL: VH
+    alos_palsar:
+      CO_POL: HH
+      CROSS_POL: HV
+
+  HV_ratio:
+    expression: CROSS_POL / (CO_POL + CROSS_POL)
+    alos_palsar:
+      CO_POL: HH
+      CROSS_POL: HV
+
+

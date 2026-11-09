@@ -1,0 +1,56 @@
+# Ignore build artifacts in reports
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.toc
+*.synctex.gz
+
+# Ignore project plan PDFs
+/reports/project-plan/*.pdf
+
+# Ignore all .ipynb_checkpoints folders/Python cache files
+_pycache_/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+
+# Ignore Pytest cache
+.pytest_cache/
+
+# Ignore Mac OS X temporary files
+.DS_Store
+
+# Ignore vscode config
+.vscode/
+
+# Ignore egg package files
+*.egg-info/
+
+# Ignore linting cache
+.ruff_cache
+
+# Ignore environment files
+.env
+.venv/
+.python-version
+uv.lock
+
+# Ignore data files
+/data
+
+# Ignore trained model artifacts
+/trained_models
+# Ignore credentials (Google Cloud service-account keys, API tokens)
+sandbox/*.json
+*-key.json
+*service-account*.json
+credentials*.json
+token*.json
+
+# Ignore build outputs
+/build/
+/dist/

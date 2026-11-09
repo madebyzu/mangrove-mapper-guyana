@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{XGBoost and WorldCover v200 extent-map model comparisons from 600 stratified independent reference plots collected for the entire Guyana coastline, interpreted against CEO and Planet imagery}
+\label{tab:coastwide-results}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llllllrr}
+\toprule
+Map & Reference & OA & UA & PA & Area (ha) & ROC-AUC & PR-AUC \\
+\midrule
+\textbf{XGB-GMW} & \textbf{ceo} & \textbf{0.972 $\pm$ 0.007} & \textbf{0.440 $\pm$ 0.056} & \textbf{0.859 $\pm$ 0.238} & \textbf{15,130 $\pm$ 4,494} & \textbf{0.948} & \textbf{0.836} \\
+\textbf{XGB-GMW} & \textbf{planet} & \textbf{0.963 $\pm$ 0.011} & \textbf{0.390 $\pm$ 0.055} & \textbf{0.643 $\pm$ 0.261} & \textbf{17,914 $\pm$ 7,391} & \textbf{0.936} & \textbf{0.775} \\
+WorldCover v200 & ceo & 0.959 $\pm$ 0.016 & 0.752 $\pm$ 0.068 & 0.415 $\pm$ 0.123 & 37,517 $\pm$ 11,016 &  &  \\
+WorldCover v200 & planet & 0.966 $\pm$ 0.014 & 0.694 $\pm$ 0.072 & 0.472 $\pm$ 0.148 & 30,478 $\pm$ 9,519 &  &  \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}

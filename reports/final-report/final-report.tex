@@ -1,0 +1,363 @@
+% Document class `report-template` accepts either project-plan or final-report option in
+% []. This will change the title page as necessary.
+\documentclass[final-report]{report-template}
+
+% Packages I use in my report.
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{blindtext}
+\usepackage{tabularx}   % auto-wrapping columns to a fixed width
+\usepackage{hyperref}
+% lat/lon degrees packages
+\usepackage{siunitx}
+\usepackage{booktabs} % required for \toprule, \midrule, and \bottomrule
+\usepackage{ragged2e}   % improves text alignment in narrow wrapped columns
+\usepackage{multirow} % required for vertical cell merging
+\usepackage{adjustbox} % provides better text formatting for wide tables
+\usepackage[labelfont=bf]{caption} % for bold figure captions
+% Utilizing APA replacing bibtex backend with biber
+\usepackage[style=apa,backend=biber]{biblatex}
+\usepackage[section]{placeins} 
+\usepackage{titlesec}
+
+\addbibresource{references.bib} % Replacing the old bibliography file loading
+
+% Source - https://tex.stackexchange.com/a/583725
+% Posted by Mico, modified by community. See post 'Timeline' for change history
+% Retrieved 2026-08-01, License - CC BY-SA 4.0
+\setcounter{secnumdepth}{3} % adding numbered subsubsections
+
+
+% Directory where I saved my figures.
+\graphicspath{{./figures/}}
+
+% Metadata used for the title page - please modify.
+\university{Imperial College London}
+\department{Department of Earth Science and Engineering}
+\course{MSc in Renewable Energy with Data Science \& AI: Geology \& Geophysics}
+\title{Resilient Coastlines: A Multi-Layered Framework for Mangrove Risk Assessment and Hindcast Validation in Guyana}
+\author{Zuriel Mbonde}
+\email{zuriel.mbonde25@imperial.ac.uk}
+\githubusername{esemsc-mm123}
+\supervisors{Dr. Temitope D. Timothy Oyedotun\\
+             Dr. James Percival}
+\repository{https://github.com/ese-ada-lovelace-2025/irp-zam25}
+
+
+% Create a custom column type for clean, left-aligned text wrapping
+\newcolumntype{L}{>{\RaggedRight\arraybackslash}X}
+
+% Configure caption style
+\DeclareCaptionLabelSeparator{semiquad}{:\quad}
+\captionsetup[table]{
+    labelfont=bf,
+    labelsep=semiquad,
+    justification=raggedright,
+    singlelinecheck=false
+}
+
+
+\begin{document}
+
+\maketitlepage  % generate title page
+
+\section*{Acknowledgments}
+I would like to acknowledge and thank my parents for their support and guidance while I was researching in Guyana. I would also like to thank Zola Narine and Kim Chan-Bagot of the National Agricultural Research and Extension Institute (NAREI) for their support and guidance in my research. Finally, I would like to thank my supervisors, Dr. Oyedotun and Dr. James Percival, for their support and assistance over this research period. 
+
+\section*{AI Acknowledgment Statement}
+I used Anthropic's Claude Opus 4.8, 5.0 and briefly Fable 5 (\url{https://claude.ai/}) to pressure-test some of my ideas and brainstorm when I ran into issues, suggest important papers, teach me unfamiliar concepts, and help me code as a coding assistant. I also used of Chat GPT-5.6 Luna (\url{https://chatgpt.com/}) to clarify ideas and test my knowledge on basic remote-sensing concepts to develop more fluency and competency in a field that is brand new to me. Finally, I made use of Claude's LaTeX abilities to help generate generic templates for tables that appear in the report. All the contents were filled with dummy text that I replaced myself or programmed. Generative AI was not used to directly create nor edit any text on this report. The submitted work reflects my understanding to the best of my abilities. Any AI-assisted preliminary ideas suggested to me were corroborated with literature, re-derived and written in my own words. A log of AI coding assistance is well documented in the \texttt{references.md} within the GitHub repository.
+
+% Abstract
+\section*{Abstract}
+Mangroves are regarded as a natural defense against rising tides and coastal waves yet their coastal protection capacity is undermined by various stress factors. With the goal of quantifying potential coastal flooding risk and building resilient coastlines, techniques in hindcasting are advantageous. Centered around a 2019 sea defense breach in Guyana,  this study designed a hindcasting model pipeline to construct and validate a coastal risk composite index that ranked mangrove belts most likely to be breached above those elsewhere on the coast in the years leading up to the breach. This model pipeline uncovered risk factors including mangrove health (EVI), erosion, fringe width, and the fraction of built-up land that could sufficiently discriminate high risk mangrove stretches. Coast-wide extent maps produced by the pipeline yield comparable results to products like WorldCover v200 in an independent design-based assessment. 
+\clearpage
+\tableofcontents
+\clearpage
+% Introduction section
+\section{Introduction}
+Ninety percent of Guyana’s population reside on a low-lying coastal plain that is at or below sea level \parencite{Pelling1999}. Historically this has put communities, wildlife and farmland at risk of coastal flooding \parencite{Lakhan1994}. The man-made cemented seawall, originally introduced by the Dutch and British in the 1880s, has allowed for the coastal strip to be reclaimed \parencite{Bassett2013}. Beyond the sea-facing wall, naturally occurring mangroves are situated in the intertidal zones often characterized by mudflats and salt marshes \parencite{Best2022}. Mangroves are widely regarded as a natural defense against rising tides and coastal waves \parencite{Hernandez2024, Van2023, Blankespoor2017}. As a “first line of defense” followed by a seawall, this mangrove-led hybrid infrastructure reduces the inundation risk \parencite{De2023}.  However, mangroves undergo stress from various factors, undermining their ability to protect the coast. 
+
+The domain of extent mangrove mapping is vast with hundreds of international studies, applying multi-sensor machine learning and deep learning models to a variety of research questions. Studies such as \textcite{Nedd2023} and \textcite{Chan2024} fuse optical and Synthetic Aperture Radar (SAR) data to train Random Forest (RF) models with local data to understand changes in Guyana's mangrove canopy coverage, and to build independently validated extent maps and underlying procedures for national mangrove monitoring and restoration efforts. WorldCover v100/v200 and Global Mangrove Watch (GMW) v4.019 products provide freely accessible global mangrove extent maps, but lack continuous annual coverage at 10 m spatial resolution \parencite{Zanaga2021, Zanaga2020, Bunting2025}. Questions arise as to whether GMW or WorldCover provides better training labels for regional and coast-wide extent mapping, and which sensors provide the greatest marginal value in mangrove identification across the Guyanese coastal regions.
+
+At a global scale, 30 m spatial resolution may suffice to build a coastal protection index from mangrove extent maps in studies like \textcite{Xu2024}, which use 30 m annual GMW 3.0 extent maps to composite cross-shore width, average canopy height and Normalized Difference Vegetation Index (NDVI) as a health indicator. At a national scale, measuring coastal vulnerability for thin mangrove fringes may be less reliable at coarser resolutions and global indices may be limited in explaining vulnerability associated with local phenomena specific to the geological setting. This leads to the questions of which composite index holistically represents the mangrove coastal vulnerability and what is its composition?
+
+With the aim of uncovering insights into potential coastal flooding risk and building resilient coastlines, techniques in predictive modeling become paramount to examine. Particularly,  past coastal flooding events such as the 2019 Dantzig-Fairfield sea defense breach in Region Five are notable case studies, acting as validation to risk assessment and model predictions. In \textcite{Chung2003}, researchers in Canada devised a time-partition procedure to landslide hazards where a predictive model was trained on distant past landslides up to a cutoff year and then made predictions on more recent past landslides that were held out. Applying a similar framework to mangrove risk assessment, the question arises: In a hindcast of the 2019 Region 5 sea defense breach or known mangrove coastal failure event, would a trained model pipeline predict a risk layered extent map that could identify the true zones of high (and low) coastal risk? Furthermore, do canopy structure and mangrove health (or their respective proxies) sufficiently discriminate which mangrove belts would most likely be breached in the leading years? This paper will use remote-sensing and machine learning in an attempt to answer these questions, the last two of which have not been documented before.  
+
+\section{Materials}
+
+\subsection{Study Area}
+Guyana's low-lying muddy coastline covers six of the 10 administrative regions of the country. These include Barima-Waini (1) at \ang{60}W near Venezuela, Pomeroon-Supenaam (2), Essequibo Islands-West Demerara (3), Demerara-Mahaica (4), Mahaica-Berbice (5), and East Berbice-Corentyne (6) at \ang{57}W bordering Suriname. At  \ang{6}N to \ang{8}N, thin mangrove fringes face the Atlantic Ocean (Fig.\ref{fig:map-guyana}). Within this study area, Pomeroon River estuary (in Region 2)  and Dantzig-Fairfield (in Region 5) serve as areas of validation and application. Mangrove species in the coastal areas include \textit{Avicennia germinans} L. (black mangrove), and \textit{Laguncularia racemosa} (L.) C.F.Gaertn. (white mangrove) while \textit{Rhizophora mangle} L. (red mangrove) are riverine \parencite{Dookie2025}. These coastal mangroves are typically situated behind or within the intertidal mudflats, caused by migrating mudbanks from the Amazon river's sediment deposits \parencite{Oyedotun2019}. Other land cover types and land uses within the coastal strip comprise cropland, swamp forest, plantations, and built-up area. 
+
+\begin{figure}[htbp]
+    \vspace{5 mm}
+    \begin{center}
+        \includegraphics[width=1.0\textwidth]{final-report/figures/regions_map_fig.png}
+    \end{center} 
+     \caption{\label{fig:map-guyana} The coastal regions of Guyana with an inset locating the study area within South America }
+\end{figure}
+
+\subsection{Data Sources}
+This study proposes a multi-sensor approach to achieve coastal mangrove extent mapping and risk analysis. Satellite optical imagery such as Sentinel-2 MultiSpectral Instrument (MSI) and Landsat 8 was collected to provide spectral bands to detect mangroves. These datasets have a 10 m and 30 m pixel resolution respectively. The radar bands from SAR datasets were also collected, complementing optical data as a cloud-independent source. These composed of ALOS-PALSAR (Phased Array type L-band Synthetic Aperture Radar) Yearly Mosaic at 25 m resolution and Sentinel-1 SAR Ground Range Detected (GRD) C-band at 10 m resolution. Ten meter resolution global land cover products, WorldCover v100 and Global Mangrove Watch Annual Mangrove Extent 4.019, were selected as training labels. The extent mapping procedure relies on training data for the entire year of 2020. Data from 2016-2018 as well as 2021 was used for inference. WorldCover v200 which provides land cover for 2021 was acquired for comparison. Global Surface Water Mapping Layers at 100 m resolution was applied using its occurrence band. This separates open water from the intertidal coastal zone in modeling and risk assessment, Lastly, Global Population Surfaces for the estimated population in 2020 and Dynamic World, a multi-year land cover product, were acquired for the years 2016-2018, and 2021 as a combined layer of the risk assessment. The former and latter have a pixel resolution of 100 m and 10 m respectively. Table \ref{tab:datasets} details the datasets, providers and acquisition years, and their purpose in this study. 
+\vspace{1 mm}
+\begin{table}[!htbp]
+    \centering
+    \caption{Summary of datasets, providers, year(s) of acquisition and purpose for this study}
+    \label{tab:datasets}
+    % Increases vertical row padding (1.0 is default, 1.3 - 1.5 is ideal)
+    \renewcommand{\arraystretch}{1.4}
+    % \textwidth forces the table to fit the page bounds
+    % Column 1 is fixed width ('c'), Columns 2-4 use flexible 'L' wrapping
+    \begin{tabularx}{\textwidth}{L L c L}
+        \toprule
+        \textit{Dataset} & \textit{Provider} & \textit{Acquisition year(s)} & \textit{Purpose} \\
+        \midrule
+        % Modeling Group (5 rows)
+        Sentinel-1 SAR GRD C-band & ESA/Copernicus & \multirow{5}{*}{2016--2021} & \multirow{5}{*}{Modeling} \\
+        Harmonized Sentinel-2 MSI SR Level 2A & ESA/Copernicus & & \\
+        Harmonized Sentinel-2 MSI TOA Level 2C & ESA/Copericus & & \\
+        Sentinel-2: Cloud Probability & ESA/Copernicus & & \\
+        Landsat 8 Level 2 & USGS & & \\
+        Global PALSAR Yearly Mosaic & JAXA/EORC & & \\
+        \cmidrule(lr){1-4}
+        % Training Labels Group (2 rows)
+        ESA WorldCover 10m v100 & ESA/WorldCover Consortium & \multirow{2}{*}{2020} & \multirow{2}{*}{Training Labels} \\
+        Global Mangrove Watch: Annual Mangrove Extent 4.0.19 & \textcite{Bunting2025} & & \\
+        \cmidrule(lr){1-4}
+        % Individual Rows
+        ESA WorldCover 10m v200 & ESA/WorldCover Consortium & 2021 & Extent Map Comparison \\
+        \cmidrule(lr){1-4}
+        Global Surface Water Mapping Layers & JRC/Google & 2016--2021 & Water Mask \\
+        \cmidrule(lr){1-4}
+        GHSL: Global Population Surfaces 1975-2030 & JRC/Google & 2020 & Risk Assessment \\
+        \cmidrule(lr){1-4}
+        Dynamic World V1 & World Resource Institute/Google & 2016--2021 & Risk Assessment \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Methods}
+
+\subsection{Data Collection and Preprocessing}
+Google Earth Engine (GEE) accessed via the Python API served as the primary geospatial data host for the study. Given its vast data catalog, free availability for non-commercial use, and high-performance cloud computing, GEE was a suitable platform for data collection and preprocessing. The data workflow is shown in Fig. \ref{fig:data-flowchart}.
+\begin{figure}[!htbp]
+    \vspace{2 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{final-report/figures/irp-data-flowchart.drawio.png}}
+    \end{center} 
+    \caption{\label{fig:data-flowchart} The preprocessing, modeling, postprocessing and validation workflow }
+\end{figure}
+\vspace{5 mm}
+
+Optical datasets are orthorectified and atmospherically corrected when acquired from GEE. However, their bands must be rescaled and in the case of Landsat 8, offset. A cloud and cloud shadow filter was then applied by isolating Landsat 8's cloud bits and setting a cloud probability threshold after combining Sentinel-2 with Sentinel-2 Cloud Probability. A lenient cloud threshold of 50\% was set to ensure any suspected clouded pixels were masked, especially in a heavily cloud-covered region like Guyana. Subsequently,  the image collections were reduced using the median value of the unmasked pixels to produce annual composites. SAR datasets also orthorectified and radiometrically corrected, such as Sentinel-1 were separated by their ascending and descending orbital channels $VV_{asc}$, $VH_{asc}$, $VV_{desc}$, $VH_{desc}$  and composited using the min reducer. The combined $VV$, and $VH$  channels also required compositing using the median reducer. ALOS-PALSAR, available as an annual mosaic, was converted from digital number to linear scale for its backscatter channels $HH$ and $HV$. The Refined Lee filter, \textcite{Mullissa2021}, was applied to each band to reduce speckle noise through adaptive directional smoothing while preserving structural features like edges. Given this algorithm is computationally intensive, it was applied after rather than before compositing, reducing the computation to a single image as opposed to an entire annual collection of Sentinel-1 images.
+
+\subsection{Indices Calculation}
+The spectral and backscatter indices mentioned in Fig. \ref{fig:data-flowchart} rely on the same function, \texttt{compute\_indices}. The function reads from a configuration file (\texttt{indices.yaml}), which lists expressions for each index, their associated bands and channels, and performs the calculations for those expressions. Most of these indices were selected in accordance with previous studies\footnote{Indices expressions can be found in the associated references, or in the named files within the repository.} \parencite{Nedd2023, Chan2024}. Additionally, Horizontal-to-Vertical polarization ratio or $HV$ ratio derived from ALOS-PALSAR was selected to discriminate the level of volume scattering from double bounce scattering \parencite{Kellndorfer2019}.
+
+\subsection{Sampling Design and Modeling}
+After preprocessing, the image collections were exported and fused for model training.
+When exporting the stack from GEE, bands from ALOS-PALSAR and Landsat 8 imagery were resampled from their native resolution to 10 m automatically through nearest-neighbor interpolation, ensuring an aligned pixel grid. The samples were randomly stratified with 6000 samples per class (mangrove/non-mangrove) within the coastal strip while excluding open water pixels. Given mangrove fringes have a low prevalence, known to be exclusively found on the coast and near rivers, oversampling allows the model a greater likelihood to learn patterns and trends from the minority class. Samples were then grouped by region to build leave-one-region-out spatial cross-validation folds shown in panel A of Fig. \ref{fig:spatial-cv}. That is to say, each region is held out for model evaluation while the remaining are trained. 
+
+\begin{figure}[htbp]
+    \vspace{2 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{final-report/figures/spatial_cv_fig.png}}
+    \end{center}
+    \caption{\label{fig:spatial-cv} Spatial samples (A) and class distributions (B) across six regions for WorldCover v100 labels}
+\end{figure}
+\vspace{5 mm}
+Each evaluated region receives a producer's and user's accuracy, a f1-macro score and the number of samples dropped from the training set that lie within a 3 km buffer of the regional border (outlined in function \texttt{run\_spatial\_cv}). Spatial cross-validation serves as a point-based estimate of the models' ability to predict each held-out region from the others. The final model in function, \texttt{build\_final\_model}, was trained and tuned on all six regions each held out selecting the set of hyperparameters that maximizes the mean cross-validation score.
+
+This study adopts two classifiers, RF and XGBoost (eXtreme Gradient Boosting). RF has been the most extensively used in remote sensing studies within GEE \parencite{Islam2025}. Robust to multi-collinearity and overfitting through feature bagging and tree voting, RF was selected as a baseline model to compare to regional benchmarks such as \textcite{Chan2024}, which also use RF. Gradient boosting classifiers like XGBoost are also commonly used though not native to GEE. XGBoost is known for its speed through multi-threading tree processing and regularization to reduce overfitting \parencite{Chen2016}. These two models were prioritized over spatially-aware deep learning models like U-Net as they provide an internal layer of interpretability through permutation importance and SHAP analysis. 
+
+\subsubsection{Threshold Sensitivity}
+Although equal class sizes were calibrated in the sampling design, Panel B in Fig.\ref{fig:spatial-cv} reveals some of the imbalance among the regional folds, which could hamper the model's ability to classify the held-out regions from the training set. Class imbalance writ-large becomes more apparent during inference when every pixel is not a random sparse point samples, but classified in a contiguous grid. As a result, probability threshold values 50\% (default), 70\% and 80\% were selected to illustrate the user's and producer's accuracy tradeoff. Threshold tuning could be particularly advantageous in coastal flood risk assessment where maximizing user's accuracy may be prioritized. To gain perspective on model performance without the influence of thresholds, AUC (Area Under the Curve) scores were included in accuracy assessments. 
+
+\subsubsection{Sensor and Training Label Comparisons}
+With various sensors processed and available for use, subsets of optical and SAR were evaluated head-to-head while controlling the model, the area of validation, training label targets and model parameters. These subsets included optical sensors only, optical with Sentinel-1 C-band, optical with ALOS-PALSAR, and optical with Sentinel-1 C-band and ALOS-PALSAR. In a separate head-to-head, training label collections, WorldCover v100, which has a designated mangrove land cover class, and GMW v4.0, which is an annual mangrove extent map raster, were evaluated. Each experiment involved configuring the training target, retraining the model, producing a mangrove extent map, postprocessing the map with water and spectral mask, and evaluating the product in an independent accuracy assessment. 
+
+\subsection{Independent Accuracy Assessment}
+In assessing the quantitative performance of the models, independent references were sampled from an extent map produced by the "Without L-band" RF model. Random samples, stratified by predicted class were assigned a plot identifier associated with its longitude and latitude coordinates. High-resolution Planet imagery at 4.77 m was supplied to interpret each plot as mangrove or non-mangrove. The Collect Earth Online (CEO) was also employed as a separate platform to interpret plots using a combination of Google Earth and Sentinel-2 at 10 m resolution.  The imagery was configured for the year 2021. There were four interpretation sessions, one pass per platform in Planet and CEO, covering Pomeroon river estuary in Region 2 and the entire Guyana coastline. To reduce any bias, sessions conducted by a sole analyst were carried out on separate days and without reference to any model predictions. The interpretations for CEO are publicly available on the CEO platform\footnote{The studies on CEO can be found at this link: https://app.collect.earth/review-institution?institutionId=7007} while the interpretations using Planet imagery can be found in the code repository. 
+
+\subsubsection{Design-based Inference and Area Estimates}
+Interpretations in Planet and CEO were counted and assembled into a confusion matrix. Following the \textcite{Olofsson2014} random stratified sampling design, a stratified estimator was calculated representing the estimated area proportions of each class, seen in Eq.(4). The estimated user's, producer's, and overall accuracies along with their 95\% confidence interval from Eq(5)-(7) in \textcite{Olofsson2014} was then derived. Design-based stratified area estimates with confidence intervals were reported in hectares using\eqref{eq:strat-area} and Eqs.(4)(10)-(11) in \textcite{Olofsson2014}. 
+\begin{align}
+    \hat A_i &= \hat p_{\cdot i }\, A_{tot} \notag \\
+             &=\hat p_{\cdot i}\frac{\;a_{px}\, N_{px}}{10{,}000}
+    \label{eq:strat-area}
+\end{align}
+where $\hat p_{\cdot i }$ is the estimated area proportion of class $i$, $A_{tot}$ is the total map area in pixels, $\,a_{px}$ is the area of a single image pixel in $m^2$,  and $N_{px}$ is the total number of pixels classified. \\
+
+With these error-adjusted estimates in place, we have a more honest lens into the validity of the extent maps produced, which serves as a base layer for risk assessment.
+
+\subsection{Risk Index Assessment}
+This study examines a similar risk index formulated in \textcite{Xu2024}, taking into account fringe width, HV from L-band SAR as a structural proxy and Enhanced Vegetation Index (EVI) in place of NDVI. To determine the robustness of these variables, Principal Component Analysis (PCA), Pearson/Spearman correlations and sensitivity experiments were employed, following good practices of devising composite indicators \parencite{JRC2008}. These results were then compared with an alternative formulation of the risk index that considers the impact of erosion/accretion cycle endemic to Guyana's coast, and the inland value of human capital the mangroves are protecting.
+
+\subsubsection{Fringe Width}
+Within an extent map, mangrove fringe width was measured by casting shore-normal transects recording the end-to-end distance from the seaward to landward fringe edges.  Transects were equally spaced 100 m along shore. The relationship between fringe width, wave height and rate of wave attenuation is given by Eq.(2) in \textcite{Mazda2006}. Empirical observations showed a 50\% reduction in wave height within the 120 m of the mangrove fringe width and an attenuation rate of  0.0020$-$0.0032 $m^{-1}$ within Chateau Margot fringes in Region 4 \parencite{Best2022}. Using Eq.(2) in \textcite{Mazda2006}, fringe width $x = 120\,m$, and $H_{x}/{H_0} = 0.5$ results in an upper bound $r$ of $ 0.0058\,m^{-1}$. With a value of $r$ specified and a fringe width $x$ measured, we can quantify a risk score between 0 and 1, where 0 implies complete wave protection and 1 implies no wave attenuation and no coastal protection from the fringe. 
+
+\subsubsection{Structure and Health}
+The HV channel was obtained directly from ALOS-PALSAR acting as a proxy for woody biomass indicated by the level of volume scattering \parencite{Saatchi2019}. EVI is often used in densely vegetated areas such as tropical forests \parencite{Zeng2022}. It differs from NDVI in that it doesn't saturate when exposed to significant green areas like rain forests. EVI uses similar bands such as near-infared but also contains blue, atmospheric resistance coefficients, a gain factor and a canopy background adjustment, defined in Table 1 of \textcite{Zeng2022}. Readings for these indicators were then sampled per transect and normalized to form a risk score. 
+
+\subsubsection{Erosion}
+Net shoreline movement was used to measure the level of erosion and accretion for each open coast transect. This involved constructing a grid-aligned extent map with open-coast transects\footnote{Open coast transects are transects in the direct line of ocean waves, excluding transects cast from estuary or river banks} in the same relative position from the previous year, and calculating the difference between mangrove seaward edges. After normalization, positive differences would be classified as accretion adding no effect while negative differences would be seen as erosion, increasing the risk.  
+
+\subsubsection{Exposure}
+Dynamic World (2021) and Global Population Surfaces (2020) products were resampled (nearest neighbor and bilinear respectively), aligned to the mangrove extent map, and sampled up to 4 km inland of the belt's landward edge for every open-coast transect. Land cover pixels were sampled over 10 m intervals and the fraction of built-up area or cropland was calculated as a risk score. The maximum number of people per hectare over the 4 km stretch was then calculated and scaled with a fixed 25 people per hectare saturation point. The final exposure risk score considered the highest value between land cover and population, 
+
+\subsection{Monte Carlo Sensitivity}
+Monte Carlo simulations were conducted using initial weights 0.50/0.25/0.25 for fringe width, HV and EVI. Given the weights were non-negative and summed to 1, a Dirichlet distribution was employed, drawn 2000 times perturbing the weights to yield a range of possible risk values per open-coast transects. The top quartile of risk scores was calculated per draw for every transect and the fraction of weightings that scored in the top quartile were recorded with the associated transects. This procedure was adapted from \textcite{Tervonen2009}, which performs weight robustness analysis through a category acceptability index. Similarly,  robustness was achieved by determining that most transects, regardless of their weightings sampled would likely score in the same category. This simulation was also applied to risk index variants depending on PCA results.
+
+\subsection{Hindcast Design}
+The hindcast was designed to analyze risk from 2016 through 2018 before the 2019 Dantzig-Fairfield sea breach. Due to data unavailability in those years, Sentinel-2 MSI Top of Atmosphere (TOA) Level 1C was applied instead of  Sentinel-2 SR Level 2A with identical preprocessing except for a minor alteration to the spectral mask. Unlike its counterpart, TOA Level 1C is not atmospherically corrected so its spectral band values can greatly differ. This required retraining the model with same training data but replacing SR Level 2A with TOA Level 1C. The 2016 extent map produced served as the baseline, recording the composite risk index's fringe width, HV structure, EVI stress, land use and population exposure. Erosion scores were determined for subsequent years where detecting edge shifts among shore-normal transects was possible. The hindcast looked at the risk scores across transects for a 2018 Region Five mangrove extent map and identified where transects overlapped with the breached zone.  Risk score comparisons were also made between years looking at transects in the breached zone and outside the zone elsewhere in the region to identify any patterns between risk factors and their discriminating capacity. 
+
+\section{Results}
+\subsection{Extent Mapping}
+\subsubsection{Regional}
+The first set of experiments, using RF models, examined the marginal value of L-band, C-band, optical-data alone for mangrove classification. The ablation study referenced in Table \ref{tab:region2-results} shows the full fusion model's map which includes optical and SAR sensors (L-band and C-band) had the best performance in overall (OA) and producer's accuracy (PA). It also had the highest AUC scores across both CEO and Planet references. The model without C-band had the highest user's accuracy (UA) while the RF model without SAR sensors performed the worst across all metrics.
+\input{final-report/tables/region2_results}
+
+% NOTE: CONTENT REMOVAL Removing estimator to conserve words. Reconsider if below the word count.
+% Weighing RF and XGBoost in an estimator head-to-head, the two full fusion models showed comparable performance with near identical AUC scores across references. Area estimates also differed marginally.
+
+XGB models with WorldCover and GMW training labels showed significant differences in user accuracy with 0.723 ± 0.061 for CEO and Planet versus 0.919 ± 0.042 (CEO) and 0.912 ± 0.044 (Planet) respectively. Contrastingly, WorldCover beat GMW in producer's accuracy with 0.955 ± 0.048 (CEO) and 0.890 ± 0.067 (Planet) against GMW's 0.933 ± 0.055 (CEO) and 0.862 ± 0.069 (Planet). Overall, a full fusion XGBoost using GMW training labels showed the strongest performance\footnote{Full fusion RF trained on GMW labels, not shown, would yield similar results.}, highlighted in bold (Table \ref{tab:region2-results}).
+
+The C-band and optical fusion RF trained on 30 m resolution custom polygons in \textcite{Chan2024} served as a suggestive benchmark\footnote{Studies draw from different reference plots with different interpreters, diluting a true head-to-head model comparison.}. 
+
+\subsubsection{Coast-wide}
+Expanding to the entire coast in Table \ref{tab:coastwide-results}, the XGBoost model's map scored a considerably lower user's accuracy of 0.440 ± 0.056 (CEO) and 0.390 ± 0.055 (Planet) compared to the Pomeroon River estuary estimates. It also scored a lower producer's accuracy with a much wider confidence interval\footnote{The wider confidence interval is due to the randomly stratified reference having only one omission plot. Appendix B. Confusion Matrices}. AUC scores split with comparably strong ROC-AUC but weaker PR-AUC score to the regional models. WorldCover v200 product showed higher user's than producer's accuracy and greater area-adjusted estimates than the XGBoost extent map. 
+\input{final-report/tables/coastwide_results}
+\subsection{Risk Index Formulation}
+\subsubsection{Feature Selection and Weight Sensitivity}
+The risk features composed of fringe width, EVI, and HV were analyzed using PCA, revealing PC1, PC2, PC3 explained 72\%, 20\%, and 8\% of the total variance respectively, as seen in A of Fig. \ref{fig:pca-mc}. Each risk index variable loaded most strongly onto PC1 with loadings 0.92 for fringe width, 0.87 for EVI and 0.76 for HV.
+\begin{figure}[htbp]
+    \vspace{5 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{final-report/figures/risk_index_figure1.png}}
+    \end{center} 
+     \caption{\label{fig:pca-mc} Pearson correlation-based PCA of risk index composites designated A and B. The number of transects against the fraction of weighting draws from a Dirichlet distribution that scored in the top quartile (C), based on the composite risk index formulated in B.}
+\end{figure}
+In Panel B, PCA on additional factors such as erosion, land cover and population, showed PC1, PC2, PC3 explained 39\%, 26\%, and 16\% of total variance respectively. These three principal components represented 81\% of total variance collectively. Notably, the features that highly correlated with PC1 were the same in A and B. Land cover and population most strongly loaded onto PC2 and interestingly, erosion loaded onto PC3 as the feature with single highest loading of 0.76 for PC3. These three groupings were then composited into a single risk index characterized by mangrove belt condition, exposure, and erosion (with equal weights). 
+
+Monte Carlo simulations in C using the risk index from B uncovered that for 291 out of 481 open-coast transects (60\%), up to 10\% of weighting draws fell in the top quartile of risk scores. In other words, for every weight sampled, typically around $\pm$  0.1 perturbations (a standard deviation) from a Dirichlet distribution, 60\% of transects had a low likelihood of scoring in the top quartile. Conversely, 67/481 (14\%) transects had a 90\%+ chance of scoring in the top quartile regardless of the weightings sampled. The remaining 26\% of transects had more variable likelihood of scoring in the top quartile, largely dependent on weightings. 
+
+\subsubsection{Risk Mapping}
+In Fig. \ref{fig:risk-map}, the risk informed transects are layered onto the Pomeroon River estuary mangrove extent map.  Belts of high and low vulnerability are identified by their associated transects, which are colored dark red and green for high and low risk zones. Inset A highlights the area's highest average score per 30 transects. Despite belt condition (fringe width, EVI and HV) having an individual score of 0.75, the composite risk score was lower at 0.66, hinting at the effect of the erosion leg (0.47). Inset B shows the area's lowest average score, where all three risk legs were below 0.5, resulting in a risk score of 0.27.
+\begin{figure}[htbp]
+    \vspace{5 mm}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{final-report/figures/risk_index_figure2.png}
+    \end{center} 
+     \caption{\label{fig:risk-map} A multi-layered mangrove model-produced extent map for Pomeroon River estuary in Region Two with shore-normal transects indicating a composite risk score between 0 (dark green) and 1 (dark red). Insets A and B locate the highest and lowest rolling average of 30 transects on the map and show their score broken down by risk factors: belt condition, exposure, and erosion.}
+\end{figure}
+
+\FloatBarrier 
+\subsection{Hindcast of 2019}
+\subsubsection{Risk classification in breach zone}
+Generated from the model pipeline, the 2018 Region Five extent risk map illustrated in Fig. \ref{fig:hindcast-fig} (A)  highlights open-coast transects colored with their risk score between 0 (dark green) and 1 (dark red). With the 2019 sea breach zone outlined as a black strip, red to amber high risk transects can be seen underlaid while adjacent zones are mostly colored light green. There is one continuous region of high risk transects south-east of the breach zone highlighted in red. In Panel B, median risk scores are separated by transects inside and outside the breach zone for each risk factor, showing their contrast. For belt condition, exposure and erosion, median risk scores were higher among transects in the breach zone than transects elsewhere in the region. Unexpectedly, erosion had a median risk score of 0.32 in the breach zone and a risk score of approximately 0 elsewhere. Comparing AUC scores, belt condition had the highest AUC (0.73) followed by exposure (0.70) and then erosion (0.66). The composite risk recorded the highest AUC (0.86) with an overall risk score of 0.67 among breached transects compared to 0.48 for transects elsewhere. 
+
+\begin{figure}[htbp]
+    \vspace{5 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{final-report/figures/hindcast_pipeline_fig.png}}
+    \end{center} 
+     \caption{\label{fig:hindcast-fig} (A) The 2018 mangrove model-produced extent risk map for Region Five coastline annotated with transect risk scores, ranging from 0 (dark green) to 1 (dark red). Highlighted in black is the 2019 breach zone. (B) The difference in median scores across risk factors between transects inside 2019 breach zone and those elsewhere in the region. Measurements include AUC scores for all risk factors (belt condition, exposure, and erosion) and their composite.}
+\end{figure}
+
+\FloatBarrier
+\subsubsection{Changes in Risk Factors}
+The hindcast window from 2016-2018 uncovered several changes among transects in the breach zone and elsewhere on the Region Five coast. Outlined in Table \ref{tab:hindcast-pipeline-table}, the average risk for fringe width and EVI stress decreased overall among all transects. For HV structural weakness and land use (\% built-up area) risk increased. For erosion, given 2016 served as the base year for shoreline change, there was no reading for 2016 nor the two year change. However, from 2017 to 2018, we see the erosion risk increased from 0.351 to 0.362 in the breach zone, and decreased from 0.055 to 0.047 in the non-breach zones. Between the two transect classes, fringe width and HV weakness showed a near identical two-year change, differing by at most 0.003 ($\left\rvert-0.015 +0.012\right\rvert$). EVI stress and land use showed greater disparities of 0.059 ($\left\rvert-0.060 + 0.001\right\rvert$) and 0.097 ($\left\rvert 0.036 - 0.133 \right\rvert$) respectively. 
+\input{final-report/tables/hindcast_pipeline_tab}
+
+\section{Discussion}
+Developing a risk assessment framework around a hindcast is particularly advantageous, providing evidence for a reliable index that can rank zones of vulnerability before the known hazard occurred. The results from the 2019 hindcast show that the model pipeline correctly classified transects in the breach zone as higher risk compared to those elsewhere on the Region Five coast, as shown in Fig. \ref{fig:hindcast-fig}. The considerably higher median risk scores among breached transects across all risk factors underpins the model's ability to rank mangrove belts that would fail above those on the rest of the coast. This is largely due to its risk factors, which were selected based on the literature and data driven insights. Belt condition, composed of fringe width, canopy health proxies (EVI/NDVI) and canopy structure, largely held to its known discriminating ability with the highest AUC (0.73) among other risk factors. However, with inclusion of signals such as erosion and exposure (land cover and population), belt condition was surpassed by the composite risk index, which had a 0.86 AUC (0.13 higher). Techniques in PCA and Monte Carlo weight sensitivity demonstrated some effectiveness in estimating which signals could quantify various aspects of risk assessment and to what importance they should be given. This led to the formulation of belt condition and exposure, but also the isolation of erosion, which proved to add discriminatory value as the only risk factor to differ directionally between transect classes in the 2017-2018 window. Erosion increased in the breach zone while decreasing elsewhere. This aligned with anecdotal observations at the time of severe erosion in this area as a major source of mangrove failure before the event \parencite{Starbroek2019}. In contrast, mangrove structure through HV weakness showed a lack of discriminating ability in the leading years. This may be due to ALOS-PALSAR's coarser native resolution of 25 m, which may fail to resolve among thin fringes where mangrove belts can be less than 150 m. Canopy health changes, expressed through EVI stress, indicate a sufficient discriminating ability given it's higher risk score in the breach zone. Under consistent stress likely due to thinnest and possibly high energy waves, canopy health scores either remain consistently low or improve marginally in the leading years. 
+
+Upstream from risk assessment, accurate mangrove extent mapping remains critical to accurately measure mangrove belts  and identify their true locations. With both WorldCover and GMW  labels available, the independent accuracy assessment revealed that models built with GMW were stronger at identifying mangroves in Region 2, evidenced by its slightly higher AUC-PR score compared to WorldCover v100. The model using GMW showed a marginally greater capacity to handle high class imbalance, in a setting where mangroves occupy a thin sliver of the coastal plain. Additionally, the XGBoost model using WorldCover v100 recorded a lower user's accuracy score (0.723 ± 0.061), implying some degree of commission error where non-mangroves were falsely claimed as true mangroves. In the coast-wide head-to-head between model maps results demonstrated a tradeoff between user's and producer's accuracy. XGB-GMW showed a low user's accuracy but much higher producer's accuracy while WorldCover v200 showed the inverse. GMW over-predicted mangroves while the WorldCover under-predicted mangroves. Ultimately, this underscores that a model, while trained on samples from all regions, may have differing  results in one region compared to results for the entire coast irrespective of the two labeling sets. 
+
+Regarding the marginal value of L-band and C-band, it's clear from the ablation study that the fusion of the two with optical was the highest performing across all metrics, and the configuration used for the coast-wide and risk study. % IF WORDS ALLOW, USE SAATCHI/SAR HANDBOOK TO EXPLAIN WHY
+
+\section{Conclusion}
+This study served as a first look into a devising a pipeline to validate risk assessment in mangroves as a coastal protection mechanism in Guyana. The hindcast centered around a known sea defense breach in 2019 was the appropriate arena to show that the model pipeline could successfully discriminate mangrove belts most likely to be breached from those elsewhere on the coast in the years leading up to event. This model pipeline employed sensitivity and multivariate analysis to devise a composite risk index and uncover risk factors such as mangrove health (EVI), erosion, fringe width, and \% of built-up land that could sufficiently rank high risk mangrove stretches through hindcast validation. Finally, this study compared the WorldCover and Global Mangrove Watch labels at 10 m resolution in a series of experiments, designed to evaluate user and producer accuracy in mangrove classification for individual coastal regions and for the entire Guyanese coast. The study's most reliable model tested obtained a user's and producer's accuracy of 0.919 ± 0.042 and 0.933 ± 0.055 against a coastal region, and 0.440 ± 0.056 and (0.859 ± 0.238, one omission plot) coast-wide in an independent assessment.
+
+\subsection{Limitations and Future Work}
+While the extent map models produced were somewhat reliable in Region Two and Five, coast-wide results showed a sizable commission error in poor user's accuracy. This is likely due to extremely low mangrove prevalence on the entire coast. Remediation steps may involve sampling additional stratum of non-mangroves to allow the model to see more difficult diverse samples it tends to misclassify. Furthermore, the composite risk index omits variables associated with the capacity of the man-made sea defense such as height of the dykes, height of waves, rip-rap capacity etc. A risk index that can quantify and incorporate this would uncover a more holistic coastal protection. Lastly, the model pipeline requires more validation events in order to be deemed predictive. Appropriate validation events may fall outside of Guyana, which would also test the models ability to generalize to neighbors on the Guiana coast or in northeastern South America, all while improving existing architecture with U-Net, Tab-Net or possibly foundational embedding models.
+
+\clearpage
+\appendix
+\setcounter{table}{0}
+\setcounter{figure}{0}
+\section{Appendix A: Confusion Matrices} 
+\input{final-report/tables/confusion_matrices_appendix_region2}
+\vspace{6 mm}
+\input{final-report/tables/confusion_matrices_appendix_coastwide}
+
+\clearpage
+\section{Appendix B: Optical and SAR Indices Expressions}
+\begin{table}[htbp]
+    \centering
+    \caption{Spectral indices listed in \texttt{compute\_indices} with band mappings for each sensor}
+    \label{tab:optical-indices}
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\textwidth}{L c >{\hsize=1.3\hsize}L >{\hsize=0.85\hsize}L >{\hsize=0.85\hsize}L}
+    \toprule
+    \textit{Name} & \textit{Abbreviation} & \textit{Expression} & \textit{Landsat 8 bands} & \textit{Sentinel-2 bands} \\
+    \midrule
+        Normalized Difference Vegetation Index & NDVI & $\frac{\text{NIR} - \text{RED}}{\text{NIR} + \text{RED}}$ & {\scriptsize NIR=\texttt{SR\_B5}, RED=\texttt{SR\_B4}} & {\scriptsize NIR=\texttt{B8}, RED=\texttt{B4}} \\
+        \addlinespace
+        Normalized Difference Moisture Index & NDMI  & $\frac{\text{NIR} - \text{SWIR1}}{\text{NIR} + \text{SWIR1}}$ & {\scriptsize NIR=\texttt{SR\_B5}, SWIR1=\texttt{SR\_B6}} & {\scriptsize NIR=\texttt{B8}, SWIR1=\texttt{B11}} \\
+        \addlinespace
+        Modified Normalized Difference Water Index & mNDWI & $\frac{\text{GREEN} - \text{SWIR1}}{\text{GREEN} + \text{SWIR1}}$ & {\scriptsize GREEN=\texttt{SR\_B3}, SWIR1=\texttt{SR\_B6}} & {\scriptsize GREEN=\texttt{B3}, SWIR1=\texttt{B11}} \\
+        \addlinespace
+        Green Chlorophyll Vegetation Index & GCVI  & $\frac{\text{NIR}}{\text{GREEN}} - 1$ & {\scriptsize NIR=\texttt{SR\_B5}, GREEN=\texttt{SR\_B3}} & {\scriptsize NIR=\texttt{B8}, GREEN=\texttt{B3}} \\
+        \addlinespace
+        Simple Ratio & SR    & $\frac{\text{NIR}}{\text{RED}}$ & {\scriptsize NIR=\texttt{SR\_B5}, RED=\texttt{SR\_B4}} & {\scriptsize NIR=\texttt{B8}, RED=\texttt{B4}} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+\vspace{6 mm}
+% TODO list of names of terms
+\begin{table}[htbp]
+    \centering
+    \caption{SAR backscatter indices listed in \texttt{compute\_indices}, with band mappings for each sensor}
+    \label{tab:sar-indices}
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\textwidth}{L c >{\hsize=1.3\hsize}L >{\hsize=0.85\hsize}L >{\hsize=0.85\hsize}L}
+        \toprule
+        \textit{Name} & \textit{Abbreviation} & \textit{Expression} & \textit{Sentinel-1 bands} & \textit{ALOS-PALSAR bands} \\
+        \midrule
+        Modified Radar Forest Degradation Index  & mRFDI  & $\frac{\text{CO\_POL} - \text{CROSS\_POL}}{\text{CO\_POL} + \text{CROSS\_POL}}$ & {\scriptsize CO\_POL=\texttt{VV}, CROSS\_POL=\texttt{VH}} & {\scriptsize CO\_POL=\texttt{HH}, CROSS\_POL=\texttt{HV}} \\
+        \addlinespace
+        Horizontal-to-Vertical (Cross-Polarized) Ratio & HV ratio & $\frac{\text{CROSS\_POL}}{\text{CO\_POL} + \text{CROSS\_POL}}$ & \multicolumn{1}{c}{---} & {\scriptsize CO\_POL=\texttt{HH}, CROSS\_POL=\texttt{HV}} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\clearpage
+\section{Appendix C: Region Five Sea Breach Aerial Footage}
+\begin{figure}[htbp]
+    \vspace{2 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=0.85\textwidth]{final-report/figures/NAREI Drone Imagery.jpeg}}
+    \end{center}
+    \caption{\label{fig:drone-1} 2019 Drone imagery of the flooded Region 5 breach zone in Mahaica-Berbice, Guyana. Source: National Agricultural Research and Extension Institute (NAREI) }
+\end{figure}
+\vspace{5 mm}
+\begin{figure}[htbp]
+    \vspace{2 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{final-report/figures/NAREI Drone Imagery 2.jpeg}}
+    \end{center}
+    \caption{\label{fig:drone-2} 2019 Drone imagery of the flooded mangroves in the Region 5 breach zone in Mahaica-Berbice, Guyana. The Atlantic Ocean is to the East and agricultural farmland inland to the West. Source: NAREI }
+\end{figure}
+\vspace{5 mm}
+\begin{figure}[htbp]
+    \vspace{2 mm}
+    \begin{center}
+        \makebox[\textwidth][c]{\includegraphics[width=1.0\textwidth]{final-report/figures/NAREI Drone Imagery 3.jpeg}}
+    \end{center}
+    \caption{\label{fig:drone-3} 2019 Drone imagery of the flooded farmland in the Region 5 breach zone in Mahaica-Berbice, Guyana. Source: NAREI }
+\end{figure}
+\vspace{5 mm}
+% References
+\printbibliography
+
+\end{document}          
