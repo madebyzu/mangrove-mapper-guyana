@@ -10,7 +10,7 @@ docs/references.md#ai-usage : AI assistance log
 
 import json
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import geopandas as gpd
 import numpy as np
@@ -21,6 +21,7 @@ from shapely.geometry import Point
 from mangrove_mapper.utils.regions import (
     REGION_RENAMES,
     REGIONS,
+    ee_region_ids,
     export_regions_map,
     extract_coords,
     load_regions,
@@ -95,6 +96,43 @@ class TestExportRegionsMap:
         export_regions_map(output_dir=nested)
 
         assert nested.exists()
+
+
+class TestEeRegionIds:
+    def test_looks_up_regions_with_geoboundaries_spelling(self, mock_regions):
+        ee_region_ids()
+
+        # geoBoundaries spells Barima as 'Barina', so the lookup must use that
+        eq_calls = mock_regions["ee"].Filter.eq.call_args_list
+        assert call("shapeGroup", "GUY") in eq_calls
+        assert call("shapeName", "Barina-Waini") in eq_calls
+        assert call("shapeName", "Barima-Waini") not in eq_calls
+        for name in REGIONS[1:]:
+            assert call("shapeName", name) in eq_calls
+
+    def test_region_ids_follow_regions_order(self, mock_regions):
+        ee_region_ids()
+
+        # every region is filtered from the same ADM1 collection, so all
+        # .set calls land on one mock, in the order of REGIONS
+        adm1 = mock_regions["ee"].FeatureCollection.return_value.filter.return_value
+        sets = adm1.filter.return_value.first.return_value.set.call_args_list
+        assert sets == [call("rid", i) for i in range(len(REGIONS))]
+
+    def test_custom_region_subset(self, mock_regions):
+        ee_region_ids(["Demerara-Mahaica", "Mahaica-Berbice"])
+
+        adm1 = mock_regions["ee"].FeatureCollection.return_value.filter.return_value
+        sets = adm1.filter.return_value.first.return_value.set.call_args_list
+        assert sets == [call("rid", 0), call("rid", 1)]
+
+    def test_paints_rid_property_into_named_image(self, mock_regions):
+        collection, rid = ee_region_ids()
+
+        base = mock_regions["ee"].Image.return_value.int.return_value
+        base.paint.assert_called_once_with(collection, "rid")
+        base.paint.return_value.rename.assert_called_once_with("rid")
+        assert rid is base.paint.return_value.rename.return_value
 
 
 class TestLoadRegions:
