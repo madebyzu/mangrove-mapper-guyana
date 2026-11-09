@@ -1,13 +1,19 @@
+import os
 from pathlib import Path
 
+import geopandas as gpd
 import numpy as np
 import rasterio
 from rasterio.enums import Resampling
+from rasterio.features import geometry_mask
 from rasterio.merge import merge
 from rasterio.vrt import WarpedVRT
+from rasterio.warp import transform as warp_transform
 from rasterio.windows import Window
+from scipy.ndimage import distance_transform_edt
 
 INFERENCE_MASK_THRESHOLD = 40
+PERMANENT_WATER = 100  # GSW occurrence (%) counted as water by the landward mask
 # NDVI/MNDWI mask values determined by Nedd et al. (2023)
 NDVI_MIN = 0.25
 MNDWI_MAX = -0.50
@@ -412,5 +418,168 @@ def mosaic(tile_paths, out_path, nodata=NODATA):
     return out_path
 
 
-__all__ = ["extent_from_prob", "extent_tile", "iter_windows", "mosaic",
-           "predict_tile", "snap_to_domain"]
+def distance_to_water(gsw_path, land_path, out_path, occurrence=PERMANENT_WATER):
+    """
+    Distance in metres from every pixel to the nearest water, on the GSW grid.
+
+    Water is any pixel with GSW occurrence >= `occurrence` (permanent water by
+    default) or outside the land polygons (the sea). This is the distance
+    raster the landward mask is cut from.
+
+    Parameters
+    ----------
+    gsw_path : pathlib.Path or str
+        Global Surface Water occurrence GeoTiff (0 - 100 %) in a projected CRS
+        in metres. Its grid is the output grid.
+    land_path : pathlib.Path or str
+        Polygon file (e.g. data/guyana_regions.geojson) whose union is land.
+    out_path : pathlib.Path or str
+        Output float32 GeoTiff of distance to water in metres; 0 on water.
+    occurrence : int
+        GSW occurrence (%) at or above which a pixel counts as water. Default 100.
+
+    Returns
+    -------
+    pathlib.Path or str
+        `out_path`.
+
+    Notes
+    -----
+    The whole raster is held in memory, because an exact distance transform
+    needs every pixel at once. At 30 m the Guyana coast fits comfortably.
+    """
+    with rasterio.open(gsw_path) as src:
+        occ, prof = src.read(1), src.profile.copy()
+    land = geometry_mask(gpd.read_file(land_path).to_crs(prof["crs"]).geometry,
+                         out_shape=occ.shape, transform=prof["transform"], invert=True)
+    water = ~land | (occ >= occurrence)
+    # the EDT measures distance to the nearest zero, so water must be the zeros
+    dist = distance_transform_edt(~water, sampling=(abs(prof["transform"].e),
+                                                    abs(prof["transform"].a)))
+    prof.update(count=1, dtype="float32", nodata=None, **PROFILE_OPTS)
+    with rasterio.open(out_path, "w", **prof) as dst:
+        dst.write(dist.astype(np.float32), 1)
+        dst.set_band_description(1, "distance_to_water_m")
+    return out_path
+
+
+def landward_cutoff(coords, dist_path, q=99):
+    """
+    The landward-mask cutoff: a percentile of training mangrove's distance to water.
+
+    Parameters
+    ----------
+    coords : array-like
+        (n, 2) [lon, lat] pairs in EPSG:4326 of the training mangrove points,
+        e.g. ``extract_coords(train[train.label == 1])``.
+    dist_path : pathlib.Path or str
+        Distance raster from `distance_to_water`.
+    q : float
+        Percentile in 0 - 100. Default 99, so 1% of training mangrove would be
+        masked.
+
+    Returns
+    -------
+    float
+        Cutoff distance in metres.
+
+    Raises
+    ------
+    ValueError
+        If `coords` is empty, or any point falls outside the distance raster.
+
+    Notes
+    -----
+    The cutoff depends on the training set, so store it with the model
+    (``MangroveClassifier.save_model(..., metadata={"landward_cutoff_m": cut})``)
+    rather than recomputing it.
+    """
+    coords = np.asarray(coords, dtype=float).reshape(-1, 2)
+    if len(coords) == 0:
+        raise ValueError("no points to compute the cutoff from")
+    with rasterio.open(dist_path) as src:
+        xs, ys = warp_transform("EPSG:4326", src.crs, coords[:, 0], coords[:, 1])
+        rows, cols = rasterio.transform.rowcol(src.transform, xs, ys)
+        rows, cols = np.asarray(rows), np.asarray(cols)
+        outside = (rows < 0) | (rows >= src.height) | (cols < 0) | (cols >= src.width)
+        if outside.any():
+            raise ValueError(
+                f"{int(outside.sum())} of {len(coords)} points fall outside {Path(dist_path).name}")
+        dist = src.read(1)[rows, cols]
+    return float(np.percentile(dist, q))
+
+
+def apply_landward_mask(extent_path, dist_path, cutoff, out_path, block=512):
+    """
+    Sets mapped mangrove more than `cutoff` m from water to non-mangrove.
+
+    Only mangrove pixels change (1 -> 0). Non-mangrove and nodata are copied
+    as they are, so the masked map keeps the original's domain and the
+    Olofsson stratum areas stay comparable.
+
+    Parameters
+    ----------
+    extent_path : pathlib.Path or str
+        Extent map: single uint8 band, 1 mangrove, 0 non-mangrove, 255 nodata.
+    dist_path : pathlib.Path or str
+        Distance raster from `distance_to_water`, on any grid or CRS. Warped
+        (nearest) onto the extent grid; pixels it does not cover are left
+        unchanged.
+    cutoff : float
+        Maximum distance to water in metres, e.g. from `landward_cutoff`.
+    out_path : pathlib.Path or str
+        Output masked extent map, same grid and encoding as `extent_path`.
+    block : int
+        Maximum side length of each window, in pixels. Defaults to 512.
+
+    Returns
+    -------
+    tuple of float
+        (mangrove_ha, removed_ha): mangrove left after masking and mangrove
+        removed by it, in hectares, assuming a projected CRS in metres.
+
+    Raises
+    ------
+    ValueError
+        If `cutoff` is not positive.
+
+    Notes
+    -----
+    The map is written to ``<out_path>.part`` and renamed only once complete,
+    so an interrupted run never leaves a partial file under `out_path`.
+
+    See Also
+    --------
+    docs/references.md#documentation : Rasterio Documentation Virtual Warping
+    https://rasterio.readthedocs.io/en/latest/topics/virtual-warping.html
+    """
+    if not cutoff > 0:
+        raise ValueError(f"cutoff must be a positive distance in metres, got {cutoff}")
+
+    part = f"{out_path}.part"
+    kept, removed = 0, 0
+    with rasterio.open(extent_path) as esrc:
+        prof = esrc.profile.copy()
+        prof.update(**PROFILE_OPTS)
+        # uncovered pixels read as NaN, and NaN > cutoff is False, so they are kept
+        with rasterio.open(dist_path) as dsrc, \
+                WarpedVRT(dsrc, crs=esrc.crs, transform=esrc.transform,
+                          width=esrc.width, height=esrc.height, dtype="float32",
+                          nodata=np.nan, resampling=Resampling.nearest) as dist, \
+                rasterio.open(part, "w", **prof) as dst:
+            dst.set_band_description(1, esrc.descriptions[0] or "mangrove_extent")
+            for win in iter_windows(esrc, block):
+                extent = esrc.read(1, window=win)
+                far = (extent == 1) & (dist.read(1, window=win) > cutoff)
+                extent[far] = 0
+                dst.write(extent, 1, window=win)
+                kept += int((extent == 1).sum())
+                removed += int(far.sum())
+    os.replace(part, out_path)
+
+    px_ha = abs(prof["transform"].a) * abs(prof["transform"].e) / 1e4
+    return kept * px_ha, removed * px_ha
+
+
+__all__ = ["apply_landward_mask", "distance_to_water", "extent_from_prob", "extent_tile",
+           "iter_windows", "landward_cutoff", "mosaic", "predict_tile", "snap_to_domain"]
