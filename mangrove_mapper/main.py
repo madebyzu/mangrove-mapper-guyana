@@ -8,6 +8,7 @@ from pyproj import Transformer
 from .sensors import ALOSPalsar, Landsat8, Sentinel1, Sentinel2
 from .utils.download import download_from_drive, download_prefix, poll_task
 from .utils.fusion import concat_sensors, load_target
+from .utils.regions import REGIONS, ee_region_ids
 
 
 class MangroveMapper:
@@ -51,7 +52,8 @@ class MangroveMapper:
             self, file_name, file_format='CSV',
             folder='MangroveMapper_ML_Exports', retrieve_from_drive=True,
             target_dataset=None, mangrove_class=None, presence_only=False,
-            s2_level='SR', s1_orbits=Sentinel1.ORBITS):
+            s2_level='SR', s1_orbits=Sentinel1.ORBITS,
+            balance_by_region=False, n_total=None):
         """
         Retrieves multi-sensor data to Google Drive with the option to download to
         local drive.
@@ -80,12 +82,36 @@ class MangroveMapper:
             Sentinel-2 processing level, 'SR' (default) or 'TOA'.
         s1_orbits : tuple of str
             Sentinel-1 orbit passes to build backscatter bands. Defaults to both.
+        balance_by_region : bool
+            If True, draw the same number of points from every coastal region x
+            class cell (see Notes) instead of stratifying on the label alone.
+            Default False, which reproduces the original export.
+        n_total : int, optional
+            Total points requested when `balance_by_region` is True, split evenly
+            as ceil(n_total / (2 x number of regions)) per cell. Required then,
+            ignored otherwise.
 
         Returns
         -------
         ee.batch.Task
             The export task object
+
+        Raises
+        ------
+        ValueError
+            If `balance_by_region` is True and `n_total` is not a positive int.
+
+        Notes
+        -----
+        Region balancing stratifies on one combined band,
+        ``cls = region_index x 2 + label``, so region i's non-mangrove is 2i and
+        its mangrove is 2i + 1. Pixels outside the coastal regions have no
+        region index and are never sampled. A cell with fewer eligible pixels
+        than requested, or points where a feature is masked, return fewer rows.
         """
+        if balance_by_region and (not isinstance(n_total, int) or n_total <= 0):
+            raise ValueError(
+                f"n_total must be a positive int when balance_by_region=True, got {n_total!r}")
         target_dataset = target_dataset or self.config['target']['dataset_id']
         mangrove_class = mangrove_class or self.config['target']['mangrove_class']
         sensors = [
@@ -106,19 +132,38 @@ class MangroveMapper:
         stacked_image = stacked_image.addBands(target)
         export_settings = self.config['export']
 
-        points = target.stratifiedSample(
-            numPoints=export_settings['num_sample_points'],
-            classBand=export_settings['target_name'],
-            region=self.aoi_polygon,
-            scale=export_settings['scale'],
-            seed=export_settings['seed'],
-            tileScale=export_settings['tile_scale'],
-            geometries=export_settings['geometries'])
+        if balance_by_region:
+            _, rid = ee_region_ids()
+            cls = rid.multiply(2).add(target).rename('cls').clip(self.aoi_polygon)
+            values = list(range(2 * len(REGIONS)))
+            points = cls.stratifiedSample(
+                # 0 for any value outside `values`, so only the region x class cells are drawn
+                numPoints=0,
+                classBand='cls',
+                classValues=values,
+                classPoints=[math.ceil(n_total / len(values))] * len(values),
+                region=self.aoi_polygon,
+                scale=export_settings['scale'],
+                seed=export_settings['seed'],
+                tileScale=export_settings['tile_scale'],
+                geometries=export_settings['geometries'])
+            # the label comes from the stack's label band; the points only carry 'cls'
+            properties = []
+        else:
+            points = target.stratifiedSample(
+                numPoints=export_settings['num_sample_points'],
+                classBand=export_settings['target_name'],
+                region=self.aoi_polygon,
+                scale=export_settings['scale'],
+                seed=export_settings['seed'],
+                tileScale=export_settings['tile_scale'],
+                geometries=export_settings['geometries'])
+            properties = [export_settings['target_name']]
 
         training_samples = stacked_image.sampleRegions(
             collection=points,
             scale=export_settings['scale'],
-            properties=[export_settings['target_name']],
+            properties=properties,
             tileScale=export_settings['tile_scale'],
             geometries=export_settings['geometries']
         )

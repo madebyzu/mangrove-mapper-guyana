@@ -162,6 +162,37 @@ class TestSaveLoadModel:
         assert nested.exists()
 
 
+    def test_metadata_round_trip(self, mc, small_dataset, tmp_path):
+        X, y = small_dataset
+        clf = mc.create_classifier('xgboost', random_state=42).fit(X, y)
+
+        path = mc.save_model(clf, 'xgb', output_dir=tmp_path,
+                             metadata={'landward_cutoff_m': np.float64(2084.3)})
+
+        assert mc.load_metadata(path) == {'landward_cutoff_m': 2084.3}
+
+    def test_metadata_kept_out_of_best_params(self, mc, small_dataset, tmp_path):
+        X, y = small_dataset
+        clf = mc.create_classifier('xgboost', random_state=42).fit(X, y)
+
+        # load_model feeds best_params to set_params, so metadata must not end up there
+        path = mc.save_model(clf, 'xgb', output_dir=tmp_path, best_params={'max_depth': 3},
+                             metadata={'landward_cutoff_m': 2084.3})
+        loaded = mc.load_model(path)
+
+        params = json.loads((tmp_path / 'xgb_best_params.json').read_text())
+        assert 'landward_cutoff_m' not in params
+        assert loaded.get_params()['max_depth'] == 3
+
+    def test_load_metadata_empty_without_sidecar(self, mc, small_dataset, tmp_path):
+        X, y = small_dataset
+        clf = mc.create_classifier('random_forest', random_state=42).fit(X, y)
+
+        path = mc.save_model(clf, 'rf', output_dir=tmp_path)
+
+        assert not (tmp_path / 'rf_metadata.json').exists()
+        assert mc.load_metadata(path) == {}
+
 class TestRunSpatialCV:
     def test_one_fold_per_region_with_metrics(self, mc):
         X, y, region_labels, all_coords = _spatial_dataset()
