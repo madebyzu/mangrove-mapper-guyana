@@ -269,3 +269,73 @@ class TestRunInterpretationWidget:
 
         args = mock_interpreter.build_interactive_map.call_args
         assert args[0][0] == "projects/me/assets/basemaps"
+
+
+@pytest.fixture
+def mock_region_ids():
+    with patch("mangrove_mapper.main.ee_region_ids") as mock:
+        mock.return_value = (MagicMock(), MagicMock())
+        yield mock
+
+
+class TestGetSensorDataRegionBalanced:
+    def test_requires_n_total(self, mapper, mock_pipeline, mock_region_ids):
+        with pytest.raises(ValueError, match="n_total"):
+            mapper.get_sensor_data("test_export", balance_by_region=True)
+
+    @pytest.mark.parametrize("n_total", [0, -5, 20_000.0])
+    def test_rejects_invalid_n_total(self, mapper, mock_pipeline, mock_region_ids, n_total):
+        with pytest.raises(ValueError, match="n_total"):
+            mapper.get_sensor_data(
+                "test_export", balance_by_region=True, n_total=n_total)
+
+    def test_combined_class_is_region_times_two_plus_label(
+            self, mapper, mock_pipeline, mock_region_ids):
+        mapper.get_sensor_data(
+            "test_export", balance_by_region=True, n_total=20_000)
+
+        rid = mock_region_ids.return_value[1]
+        target = mock_pipeline["target"].return_value
+        rid.multiply.assert_called_once_with(2)
+        rid.multiply.return_value.add.assert_called_once_with(target)
+        rid.multiply.return_value.add.return_value.rename.assert_called_once_with(
+            "cls")
+
+    def test_samples_every_region_class_cell_equally(
+            self, mapper, mock_pipeline, mock_region_ids):
+        mapper.get_sensor_data(
+            "test_export", balance_by_region=True, n_total=20_000)
+
+        export = CONFIG["export"]
+        cls = (mock_region_ids.return_value[1].multiply.return_value.add.return_value
+               .rename.return_value.clip.return_value)
+        # 6 regions x 2 classes = 12 cells, ceil(20,000 / 12) = 1,667 each
+        cls.stratifiedSample.assert_called_once_with(
+            numPoints=0,
+            classBand="cls",
+            classValues=list(range(12)),
+            classPoints=[1667] * 12,
+            region=mapper.aoi_polygon,
+            scale=export["scale"],
+            seed=export["seed"],
+            tileScale=export["tile_scale"],
+            geometries=export["geometries"],
+        )
+        # the label-only stratification is not used
+        mock_pipeline["target"].return_value.stratifiedSample.assert_not_called()
+
+    def test_label_read_from_stack_not_point_properties(
+            self, mapper, mock_pipeline, mock_region_ids):
+        mapper.get_sensor_data(
+            "test_export", balance_by_region=True, n_total=20_000)
+
+        final_image = (mock_pipeline["concat"].return_value
+                       .toFloat.return_value.addBands.return_value)
+        # the points only carry 'cls'; the label comes from the stack's label band
+        assert final_image.sampleRegions.call_args.kwargs["properties"] == []
+
+    def test_default_export_does_not_build_regions(
+            self, mapper, mock_pipeline, mock_region_ids):
+        mapper.get_sensor_data("test_export")
+
+        mock_region_ids.assert_not_called()

@@ -11,6 +11,8 @@ The folllowing figures that are available to generate include:
 | `risk_index_figure2.png` | `risk_index_figures.ipynb` | Figure 5 |
 | `spatial_cv_fig.png` | `spatial_cv.py` | Figure 3 |
 | `hindcast_pipeline_fig.png` |`hindcast_pipeline.ipynb`  | Figure 6 |
+| `region2_extent_fig.png` | `region2_results.ipynb` | Section 4.1.1 |
+| `coastwide_extent_fig.png` | `coastwide_results.ipynb` | Section 4.1.2 |
 
 For each figure in table inside, run .py files inside terminal at directory `ROOT/report/final-report/figures`:
 
@@ -20,7 +22,7 @@ python spatial_cy.py --project=[GEE NAME]
 For `risk_index_figures.ipynb`, follow instructions in notebool inside /figures
 
 
-For  `hindcast_pipeline_fig.png`, follow instructions in notebook inside this directory. 
+For  `hindcast_pipeline_fig.png`, `region2_extent_fig.png` and `coastwide_extent_fig.png`, follow instructions in the notebooks inside this directory. 
 
 
 ## Tables
@@ -34,5 +36,5 @@ For  `hindcast_pipeline_fig.png`, follow instructions in notebook inside this di
 
 For  `hindcast_pipeline_fig.png`, follow instructions in notebook inside this directory. 
 
-Otherwise see notebooks inside /tables
+`region2_results.ipynb` and `coastwide_results.ipynb` sit in this directory; `confusion_matrices_appendix.ipynb` is inside /tables
 

@@ -318,7 +318,8 @@ class MangroveClassifier:
                             best_params=search.best_params_)
         return search.best_estimator_, search.best_params_
 
-    def save_model(self, model, name, best_params=None, output_dir=TRAINED_MODELS_DIR):
+    def save_model(self, model, name, best_params=None, output_dir=TRAINED_MODELS_DIR,
+                   metadata=None):
         """
         Serializes a fitted model, plus an optional sidecar JSON recording
         the tuned hyperparameters. XGBoost models use the native JSON
@@ -336,6 +337,11 @@ class MangroveClassifier:
         output_dir : Path or str
             Output directory, created if missing. Defaults to
             <repo>/trained_models.
+        metadata : dict, optional
+            Values derived from the training set that inference needs, such
+            as {'landward_cutoff_m': 2084.0}. Written to <name>_metadata.json,
+            kept apart from best_params because load_model passes those to
+            set_params. Read back with load_metadata.
 
         Returns
         -------
@@ -357,7 +363,33 @@ class MangroveClassifier:
                      for k, v in best_params.items()}
             with open(output_dir / f'{name}_best_params.json', 'w') as f:
                 json.dump(clean, f, indent=2)
+        if metadata is not None:
+            clean = {k: v.item() if hasattr(v, 'item') else v
+                     for k, v in metadata.items()}
+            with open(output_dir / f'{name}_metadata.json', 'w') as f:
+                json.dump(clean, f, indent=2)
         return model_path
+
+    def load_metadata(self, path):
+        """
+        Loads the metadata sidecar written by save_model for a model file.
+
+        Parameters
+        ----------
+        path : Path or str
+            Path of the saved model file (not the sidecar).
+
+        Returns
+        -------
+        dict
+            The saved metadata, or an empty dict if the model has none.
+        """
+        path = Path(path)
+        meta_path = path.parent / f'{path.stem}_metadata.json'
+        if not meta_path.exists():
+            return {}
+        with open(meta_path) as f:
+            return json.load(f)
 
     def load_model(self, path):
         """

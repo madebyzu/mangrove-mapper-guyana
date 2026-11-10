@@ -69,6 +69,42 @@ def export_regions_map(name='guyana_regions.geojson', output_dir=REPO_ROOT / 'da
     return out_file
 
 
+def ee_region_ids(regions=REGIONS):
+    """
+    Builds the coastal regions server side and an image of their region index.
+
+    Each region is numbered by its position in `regions` (0 for the first), so
+    the index matches the order `tag_regions` and `REGIONS` use. Pixels outside
+    every listed region are masked in the returned image.
+
+    Parameters
+    ----------
+    regions : list of str
+        Region names, spelled as in REGIONS (geoBoundaries misspellings are
+        mapped back via REGION_RENAMES). Defaults to the six coastal regions.
+
+    Returns
+    -------
+    tuple of (ee.FeatureCollection, ee.Image)
+        The region polygons, each with an integer 'rid' property, and a
+        single-band integer image named 'rid'.
+
+    See Also
+    --------
+    docs/references.md#documentation : geoBoundaries: Political administrative boundaries at District level (ADM1)
+    """
+    # geoBoundaries spells Barima as 'Barina'
+    gee_names = {v: k for k, v in REGION_RENAMES.items()}
+    adm1 = ee.FeatureCollection(
+        'WM/geoLab/geoBoundaries/600/ADM1').filter(ee.Filter.eq('shapeGroup', 'GUY'))
+    collection = ee.FeatureCollection([
+        adm1.filter(ee.Filter.eq('shapeName', gee_names.get(name, name))).first().set('rid', i)
+        for i, name in enumerate(regions)])
+    # an empty ee.Image is fully masked, so only painted pixels carry a region id
+    rid = ee.Image().int().paint(collection, 'rid').rename('rid')
+    return collection, rid
+
+
 def export_south_america(name='south_america.geojson', output_dir=REPO_ROOT / 'data'):
     """
     Builds and exports the South America country boundaries (USDOS LSIB Simple

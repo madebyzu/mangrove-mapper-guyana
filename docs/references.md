@@ -75,6 +75,8 @@ and user guide. OECD publishing.
 
 
 ## AI usage
+_From November 2026, AI assistance is no longer logged per file. The entries below cover work up to that date._
+
 ### mangrove_mapper/sensors/base.py
 - On June 29th 2026, I used Claude Opus 4.8 to suggest how to build a base sensor class with abstract methods to be written by each sensor. After being provided a sample of the syntax, I applied it to my specific use case and designed each sensor-specific methods on my own. 
 
