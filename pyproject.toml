@@ -91,7 +91,8 @@ line-length = 120
 "tests/*" = ["RUF012"]
 "mangrove_mapper/sensors/*" = ["RUF012"] # TODO: fix later
 # PLC0206: use of dict/iterable unpacking in a comprehension inside notebooks is allowed here
-"reports/final-report/tables/coastwide_results.ipynb" = ["PLC0206"]
+# B023: blocks() is defined and called in the same loop pass, so it always sees the current h
+"reports/final-report/coastwide_results.ipynb" = ["PLC0206", "B023"]
 # C408: unnecessary dict/list/tuple literal creation in notebook outputs is ignored here
-"reports/final-report/tables/region2_results.ipynb" = ["C408"]
+"reports/final-report/region2_results.ipynb" = ["C408"]
 "reports/final-report/hindcast_pipeline.ipynb" = ["BLE001", "C408"]
